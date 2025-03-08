@@ -53,6 +53,7 @@ const Room = () => {
   const {
     user
   } = useAuth();
+  const { toast } = useToast();
   const [room, setRoom] = useState<RoomDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentVideoId, setCurrentVideoId] = useState('');
