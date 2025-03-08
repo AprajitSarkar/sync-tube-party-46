@@ -252,37 +252,73 @@ const ChatPanel = ({ roomId }: ChatPanelProps) => {
           <h3 className="font-medium">Chat</h3>
         </div>
         
-        <div className={`flex-1 ${isMobile ? 'overflow-y-auto max-h-[calc(100vh-250px)]' : ''}`}>
-          <ScrollArea className="h-full p-4">
-            {messages.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                <p>No messages yet. Say hello!</p>
+        {isMobile ? (
+          // Mobile chat layout with fixed height and scroll
+          <div className="flex flex-col flex-1 relative">
+            <div className="absolute inset-0 overflow-y-auto py-4 px-3">
+              {messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  <p>No messages yet. Say hello!</p>
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-2 pb-2">
+                  {messages.map((message) => (
+                    message.type === 'activity' ? (
+                      <div 
+                        key={message.id}
+                        className="text-xs text-muted-foreground text-center my-2 italic"
+                      >
+                        {message.content}
+                      </div>
+                    ) : (
+                      <ChatMessage 
+                        key={message.id} 
+                        message={message} 
+                        currentUser={user}
+                      />
+                    )
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          // Desktop chat layout with ScrollArea
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="p-4">
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-muted-foreground">
+                    <p>No messages yet. Say hello!</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col space-y-3">
+                    {messages.map((message) => (
+                      message.type === 'activity' ? (
+                        <div 
+                          key={message.id}
+                          className="text-xs text-muted-foreground text-center my-2 italic"
+                        >
+                          {message.content}
+                        </div>
+                      ) : (
+                        <ChatMessage 
+                          key={message.id} 
+                          message={message} 
+                          currentUser={user}
+                        />
+                      )
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="flex flex-col">
-                {messages.map((message) => (
-                  message.type === 'activity' ? (
-                    <div 
-                      key={message.id}
-                      className="text-xs text-muted-foreground text-center my-2 italic"
-                    >
-                      {message.content}
-                    </div>
-                  ) : (
-                    <ChatMessage 
-                      key={message.id} 
-                      message={message} 
-                      currentUser={user}
-                    />
-                  )
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </ScrollArea>
-        </div>
+            </ScrollArea>
+          </div>
+        )}
         
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10 mt-auto">
           <div className="flex gap-2">
             <Input
               placeholder="Type a message..."
