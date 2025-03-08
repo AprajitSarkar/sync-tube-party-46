@@ -246,7 +246,7 @@ const Room = () => {
     const shareUrl = `${window.location.origin}/room/${roomId}`;
     if (navigator.share) {
       navigator.share({
-        title: 'Join my Watch Video room',
+        title: 'Join my WatchTube room',
         text: 'Watch YouTube videos together!',
         url: shareUrl
       }).catch(error => {
@@ -374,7 +374,7 @@ const Room = () => {
               <ArrowLeft size={18} />
             </CustomButton>
             <h1 className="text-lg font-bold truncate">
-              {room?.name || 'Watch Video'}
+              {room?.name || 'WatchTube'}
             </h1>
           </div>
           <div className="flex items-center space-x-3 px-[30px]">

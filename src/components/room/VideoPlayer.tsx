@@ -592,7 +592,7 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     
     if (navigator.share) {
       navigator.share({
-        title: 'Join my Sync Tube Party room',
+        title: 'Join my WatchTube room',
         text: 'Watch YouTube videos together!',
         url: shareUrl,
       }).catch(error => {

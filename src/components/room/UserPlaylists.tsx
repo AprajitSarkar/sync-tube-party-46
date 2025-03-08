@@ -115,7 +115,10 @@ const UserPlaylists = ({ onPlayVideo, onAddToRoomPlaylist }: UserPlaylistsProps)
           position: nextPosition
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting to playlist:', error);
+        throw error;
+      }
 
       toast({
         title: 'Success',
@@ -138,55 +141,57 @@ const UserPlaylists = ({ onPlayVideo, onAddToRoomPlaylist }: UserPlaylistsProps)
 
   return (
     <div className="space-y-4">
-      {playlists.map((playlist) => (
-        <GlassCard key={playlist.id} className="p-4" intensity="light">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium">{playlist.name}</h3>
-            <CustomButton
-              size="sm"
-              variant="glow"
-              onClick={() => playEntirePlaylist(playlist.items)}
-              icon={<Play size={16} />}
-            >
-              Play All
-            </CustomButton>
-          </div>
-          <div className="space-y-2">
-            {playlist.items.map((item: any) => (
-              <div key={item.id} className="flex items-center justify-between p-2 hover:bg-white/10 rounded">
-                <span className="truncate">{item.title}</span>
-                <div className="flex gap-2">
-                  <CustomButton
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={() => onPlayVideo(item.video_id)}
-                  >
-                    <Play size={16} />
-                  </CustomButton>
-                  <CustomButton
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={() => onAddToRoomPlaylist(item.video_id, item.title)}
-                  >
-                    <Plus size={16} />
-                  </CustomButton>
-                  <CustomButton
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={() => saveVideoToPlaylist(item.video_id, item.title, playlist)}
-                    disabled={isSaving}
-                  >
-                    <BookmarkPlus size={16} />
-                  </CustomButton>
-                </div>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      ))}
+      {playlists.length === 0 && !isLoading ? (
+        <div className="text-center p-4">
+          <p>You don't have any playlists yet.</p>
+        </div>
+      ) : (
+        playlists.map((playlist) => (
+          <GlassCard key={playlist.id} className="p-4" intensity="light">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium">{playlist.name}</h3>
+              <CustomButton
+                size="sm"
+                variant="glow"
+                onClick={() => playEntirePlaylist(playlist.items)}
+                icon={<Play size={16} />}
+                disabled={playlist.items.length === 0}
+              >
+                Play All
+              </CustomButton>
+            </div>
+            <div className="space-y-2">
+              {playlist.items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No videos in this playlist</p>
+              ) : (
+                playlist.items.map((item: any) => (
+                  <div key={item.id} className="flex items-center justify-between p-2 hover:bg-white/10 rounded">
+                    <span className="truncate">{item.title}</span>
+                    <div className="flex gap-2">
+                      <CustomButton
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => onPlayVideo(item.video_id)}
+                      >
+                        <Play size={16} />
+                      </CustomButton>
+                      <CustomButton
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => onAddToRoomPlaylist(item.video_id, item.title)}
+                      >
+                        <Plus size={16} />
+                      </CustomButton>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </GlassCard>
+        ))
+      )}
     </div>
   );
 };

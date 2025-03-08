@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Input } from '@/components/ui/input';
@@ -339,6 +338,17 @@ const PlaylistPanel = ({ roomId, currentVideoId, onPlayVideo }: PlaylistPanelPro
     
     try {
       showLog(`Saving to "${playlist.name}"...`);
+      
+      const { data: playlistCheck, error: checkError } = await supabase
+        .from('user_playlists')
+        .select('id')
+        .eq('id', playlist.id)
+        .single();
+        
+      if (checkError) {
+        console.error('Error checking playlist existence:', checkError);
+        throw new Error('Playlist not found');
+      }
       
       const { data: positionData, error: positionError } = await supabase
         .from('user_playlist_items')
@@ -767,4 +777,3 @@ const PlaylistPanel = ({ roomId, currentVideoId, onPlayVideo }: PlaylistPanelPro
 };
 
 export default PlaylistPanel;
-
