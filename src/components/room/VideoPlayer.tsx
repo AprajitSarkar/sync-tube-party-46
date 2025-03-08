@@ -74,7 +74,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
           filter: `room_id=eq.${roomId}`
         }, () => {
           fetchRoomPlaylist();
-          updateCurrentVideoPosition();
         })
         .subscribe();
 
@@ -114,7 +113,7 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     }
 
     const index = playlist.findIndex(item => item.video_id === videoState.videoId);
-    setCurrentVideoPosition(index);
+    setCurrentVideoPosition(index !== -1 ? index : null);
   };
 
   useEffect(() => {
@@ -132,8 +131,30 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
       if (error) throw error;
       
       if (data && data.video_state) {
-        setVideoState(data.video_state);
-        setLocalIsPlaying(data.video_state.isPlaying);
+        // Validate that the video is in the playlist
+        const videoId = data.video_state.videoId;
+        
+        if (videoId) {
+          const isInPlaylist = playlist.some(item => item.video_id === videoId);
+          
+          if (isInPlaylist || playlist.length === 0) {
+            setVideoState(data.video_state);
+            setLocalIsPlaying(data.video_state.isPlaying);
+          } else {
+            // If video is not in playlist and playlist is not empty, play the first video
+            if (playlist.length > 0) {
+              const firstVideo = playlist[0];
+              updateRoomVideoState({
+                videoId: firstVideo.video_id,
+                isPlaying: true,
+                currentTime: 0
+              });
+            }
+          }
+        } else {
+          setVideoState(data.video_state);
+          setLocalIsPlaying(data.video_state.isPlaying);
+        }
       }
     } catch (error) {
       console.error('Error fetching initial state:', error);
@@ -146,6 +167,16 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     // Don't process if we just sent this update
     if (Date.now() - lastSyncTimeRef.current < 1000) {
       return;
+    }
+
+    // Check if the video is in the playlist before accepting state change
+    if (newState.videoId) {
+      const isInPlaylist = playlist.some(item => item.video_id === newState.videoId);
+      
+      if (!isInPlaylist && playlist.length > 0) {
+        console.log("Ignoring state change for video not in playlist:", newState.videoId);
+        return;
+      }
     }
 
     setVideoState(newState);
@@ -181,6 +212,21 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   const updateRoomVideoState = (updateData: Partial<VideoState>) => {
     if (!roomId || !videoState) return;
     
+    // If updating videoId, check if it's in the playlist
+    if (updateData.videoId && playlist.length > 0) {
+      const isInPlaylist = playlist.some(item => item.video_id === updateData.videoId);
+      
+      if (!isInPlaylist) {
+        console.log("Attempted to play video not in playlist:", updateData.videoId);
+        toast({
+          title: "Can't play video",
+          description: "This video is not in the room playlist",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     lastSyncTimeRef.current = Date.now();
     
     const updatedState = {
@@ -215,21 +261,26 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     
     // If there's an initial state, seek to the correct time
     if (videoState) {
-      // Add a small delay to make sure player is ready
-      setTimeout(() => {
-        if (playerRef.current) {
-          // Add 1 second to account for delay if the video should be playing
-          const adjustedTime = videoState.isPlaying 
-            ? videoState.currentTime + 1
-            : videoState.currentTime;
+      // Verify the video is in playlist before playing
+      const isInPlaylist = playlist.some(item => item.video_id === videoState.videoId);
+      
+      if (isInPlaylist || playlist.length === 0) {
+        // Add a small delay to make sure player is ready
+        setTimeout(() => {
+          if (playerRef.current) {
+            // Add 1 second to account for delay if the video should be playing
+            const adjustedTime = videoState.isPlaying 
+              ? videoState.currentTime + 1
+              : videoState.currentTime;
+              
+            playerRef.current.seekTo(adjustedTime, true);
             
-          playerRef.current.seekTo(adjustedTime, true);
-          
-          if (videoState.isPlaying) {
-            playerRef.current.playVideo();
+            if (videoState.isPlaying) {
+              playerRef.current.playVideo();
+            }
           }
-        }
-      }, 500);
+        }, 500);
+      }
     }
   };
 
@@ -351,6 +402,19 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   };
 
   const playVideoFromPlaylist = (videoId: string) => {
+    // Verify the video is in the playlist
+    const isInPlaylist = playlist.some(item => item.video_id === videoId);
+    
+    if (!isInPlaylist && playlist.length > 0) {
+      console.log("Attempted to play video not in playlist:", videoId);
+      toast({
+        title: "Can't play video",
+        description: "This video is not in the room playlist",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     updateRoomVideoState({
       videoId,
       isPlaying: true,
