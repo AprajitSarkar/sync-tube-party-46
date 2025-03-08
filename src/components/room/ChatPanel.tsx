@@ -247,46 +247,70 @@ const ChatPanel = ({ roomId }: ChatPanelProps) => {
         duration={1000}
       />
       
-      <GlassCard className="flex flex-col h-full">
+      <GlassCard className={`flex flex-col ${isMobile ? 'h-[calc(100vh-280px)]' : 'h-full'}`}>
         <div className="p-3 border-b border-white/10">
           <h3 className="font-medium">Chat</h3>
         </div>
         
         {isMobile ? (
-          // Mobile chat layout with fixed height and scroll
-          <div className="flex flex-col flex-1 relative">
-            <div className="absolute inset-0 overflow-y-auto py-4 px-3">
-              {messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  <p>No messages yet. Say hello!</p>
+          // Mobile chat layout with fixed position for messages container and input at bottom
+          <div className="flex flex-col flex-1 overflow-hidden relative">
+            <div className="absolute inset-0 pb-16 flex flex-col">
+              <div className="flex-1 overflow-y-auto px-3 py-4">
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-muted-foreground">
+                    <p>No messages yet. Say hello!</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col space-y-2">
+                    {messages.map((message) => (
+                      message.type === 'activity' ? (
+                        <div 
+                          key={message.id}
+                          className="text-xs text-muted-foreground text-center my-2 italic"
+                        >
+                          {message.content}
+                        </div>
+                      ) : (
+                        <ChatMessage 
+                          key={message.id} 
+                          message={message} 
+                          currentUser={user}
+                        />
+                      )
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+              </div>
+              
+              <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10 bg-[#1A0B33]">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type a message..."
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="h-10 bg-white/5 border-white/10"
+                    disabled={isSending}
+                  />
+                  <CustomButton
+                    size="sm"
+                    variant="glow"
+                    onClick={sendMessage}
+                    disabled={!inputMessage.trim() || isSending}
+                    isLoading={isSending}
+                  >
+                    <SendHorizontal size={18} />
+                  </CustomButton>
                 </div>
-              ) : (
-                <div className="flex flex-col space-y-2 pb-2">
-                  {messages.map((message) => (
-                    message.type === 'activity' ? (
-                      <div 
-                        key={message.id}
-                        className="text-xs text-muted-foreground text-center my-2 italic"
-                      >
-                        {message.content}
-                      </div>
-                    ) : (
-                      <ChatMessage 
-                        key={message.id} 
-                        message={message} 
-                        currentUser={user}
-                      />
-                    )
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
+              </div>
             </div>
           </div>
         ) : (
           // Desktop chat layout with ScrollArea
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <ScrollArea className="flex-1">
               <div className="p-4">
                 {messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -315,30 +339,30 @@ const ChatPanel = ({ roomId }: ChatPanelProps) => {
                 )}
               </div>
             </ScrollArea>
+            
+            <div className="p-3 border-t border-white/10">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Type a message..."
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="h-10 bg-white/5 border-white/10"
+                  disabled={isSending}
+                />
+                <CustomButton
+                  size="sm"
+                  variant="glow"
+                  onClick={sendMessage}
+                  disabled={!inputMessage.trim() || isSending}
+                  isLoading={isSending}
+                >
+                  <SendHorizontal size={18} />
+                </CustomButton>
+              </div>
+            </div>
           </div>
         )}
-        
-        <div className="p-3 border-t border-white/10 mt-auto">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Type a message..."
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="h-10 bg-white/5 border-white/10"
-              disabled={isSending}
-            />
-            <CustomButton
-              size="sm"
-              variant="glow"
-              onClick={sendMessage}
-              disabled={!inputMessage.trim() || isSending}
-              isLoading={isSending}
-            >
-              <SendHorizontal size={18} />
-            </CustomButton>
-          </div>
-        </div>
       </GlassCard>
     </>
   );

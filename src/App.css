@@ -1,3 +1,4 @@
+
 #root {
   margin: 0 auto;
   text-align: center;
@@ -106,6 +107,29 @@
   button {
     min-height: 40px;
     min-width: 40px;
+  }
+  
+  /* Mobile chat UI improvements */
+  .mobile-chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .mobile-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 60px; /* Space for input */
+  }
+  
+  .mobile-chat-input {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    background-color: #1A0B33;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   /* Mobile playlist item buttons */
