@@ -63,6 +63,21 @@
   background: linear-gradient(135deg, #F260C5 0%, #FF3AA7 100%);
 }
 
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #FF1493;
+  animation: spin 1s ease-in-out infinite;
+}
+
 /* Mobile specific styles */
 @media (max-width: 640px) {
   #root {
@@ -109,6 +124,20 @@
     min-width: 40px;
   }
   
+  /* Mobile playlist UI improvements */
+  .mobile-playlist-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .mobile-playlist-items {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 8px;
+  }
+  
   /* Mobile chat UI improvements */
   .mobile-chat-container {
     display: flex;
@@ -130,6 +159,23 @@
     padding: 8px;
     background-color: #1A0B33;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Mobile video player */
+  .mobile-video-container {
+    width: 100%;
+    position: relative;
+  }
+  
+  /* Make video controls more accessible on mobile */
+  .mobile-video-controls {
+    padding: 12px 8px;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+  }
+  
+  .mobile-video-controls button {
+    padding: 8px;
+    margin: 0 2px;
   }
   
   /* Mobile playlist item buttons */
@@ -199,4 +245,34 @@ body {
 .dropdown-content,
 [data-radix-popper-content-wrapper] {
   z-index: 50 !important;
+}
+
+/* YouTube player responsive styles */
+.youtube-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Fix for video aspect ratio */
+.youtube-responsive {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+}
+
+.youtube-responsive iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Improve YouTube player on mobile */
+@media (max-width: 640px) {
+  .youtube-container {
+    min-height: 240px;
+  }
 }

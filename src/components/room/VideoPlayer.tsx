@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import YouTube, { YouTubePlayer, YouTubeEvent } from 'react-youtube';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Play, Pause, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipForward, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,13 +41,13 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   const isMobile = useIsMobile();
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([]);
   const [currentVideoPosition, setCurrentVideoPosition] = useState<number | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     if (roomId) {
       fetchInitialState();
       fetchRoomPlaylist();
       
-      // Subscribe to video state changes
       const videoStateSubscription = supabase
         .channel(`room_video_state:${roomId}`)
         .on('postgres_changes', {
@@ -64,7 +63,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
         })
         .subscribe();
       
-      // Subscribe to playlist changes
       const playlistSubscription = supabase
         .channel(`room_playlist:${roomId}`)
         .on('postgres_changes', {
@@ -77,7 +75,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
         })
         .subscribe();
 
-      // Cleanup subscriptions
       return () => {
         videoStateSubscription.unsubscribe();
         playlistSubscription.unsubscribe();
@@ -131,7 +128,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
       if (error) throw error;
       
       if (data && data.video_state) {
-        // Validate that the video is in the playlist
         const videoId = data.video_state.videoId;
         
         if (videoId) {
@@ -141,7 +137,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
             setVideoState(data.video_state);
             setLocalIsPlaying(data.video_state.isPlaying);
           } else {
-            // If video is not in playlist and playlist is not empty, play the first video
             if (playlist.length > 0) {
               const firstVideo = playlist[0];
               updateRoomVideoState({
@@ -164,12 +159,10 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   };
 
   const handleVideoStateChange = (newState: VideoState) => {
-    // Don't process if we just sent this update
     if (Date.now() - lastSyncTimeRef.current < 1000) {
       return;
     }
 
-    // Check if the video is in the playlist before accepting state change
     if (newState.videoId) {
       const isInPlaylist = playlist.some(item => item.video_id === newState.videoId);
       
@@ -182,28 +175,25 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     setVideoState(newState);
     
     if (playerRef.current) {
-      // Handle video ID change
       if (newState.videoId !== videoState?.videoId) {
-        // Video has changed, no need to sync time/play state since it will load fresh
         setLocalIsPlaying(newState.isPlaying);
         return;
       }
 
-      // Handle play/pause
       if (newState.isPlaying !== localIsPlaying) {
         if (newState.isPlaying) {
           playerRef.current.playVideo();
+          setLocalIsPlaying(true);
         } else {
           playerRef.current.pauseVideo();
+          setLocalIsPlaying(false);
         }
-        setLocalIsPlaying(newState.isPlaying);
       }
 
-      // Handle time change (seek) if difference is significant (>3 seconds)
       const playerTime = playerRef.current.getCurrentTime();
       const timeDiff = Math.abs(playerTime - newState.currentTime);
       
-      if (timeDiff > 3) {
+      if (timeDiff > 2) {
         playerRef.current.seekTo(newState.currentTime, true);
       }
     }
@@ -212,7 +202,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   const updateRoomVideoState = (updateData: Partial<VideoState>) => {
     if (!roomId || !videoState) return;
     
-    // If updating videoId, check if it's in the playlist
     if (updateData.videoId && playlist.length > 0) {
       const isInPlaylist = playlist.some(item => item.video_id === updateData.videoId);
       
@@ -237,7 +226,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     
     setVideoState(updatedState);
     
-    // Update the database
     supabase
       .from('video_rooms')
       .update({ video_state: updatedState })
@@ -253,22 +241,17 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     playerRef.current = event.target;
     setIsLoading(false);
     
-    // Set initial volume and apply mute state
     event.target.setVolume(70);
     if (isMuted) {
       event.target.mute();
     }
     
-    // If there's an initial state, seek to the correct time
     if (videoState) {
-      // Verify the video is in playlist before playing
       const isInPlaylist = playlist.some(item => item.video_id === videoState.videoId);
       
       if (isInPlaylist || playlist.length === 0) {
-        // Add a small delay to make sure player is ready
         setTimeout(() => {
           if (playerRef.current) {
-            // Add 1 second to account for delay if the video should be playing
             const adjustedTime = videoState.isPlaying 
               ? videoState.currentTime + 1
               : videoState.currentTime;
@@ -285,13 +268,11 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   };
 
   const onPlayerStateChange = (event: YouTubeEvent) => {
-    // Handle player state changes
     switch (event.data) {
       case YouTube.PlayerState.PLAYING:
         setLocalIsPlaying(true);
         setIsBuffering(false);
         
-        // Only update room state if the local user initiated the play
         if (!videoState?.isPlaying) {
           updateRoomVideoState({ 
             isPlaying: true,
@@ -299,7 +280,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
           });
         }
         
-        // Set up regular sync interval when playing
         if (syncIntervalRef.current) {
           window.clearInterval(syncIntervalRef.current);
         }
@@ -310,7 +290,7 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
               currentTime: playerRef.current.getCurrentTime()
             });
           }
-        }, 15000) as unknown as number;
+        }, 5000) as unknown as number;
         
         break;
         
@@ -318,7 +298,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
         setLocalIsPlaying(false);
         setIsBuffering(false);
         
-        // Only update room state if the local user initiated the pause
         if (videoState?.isPlaying) {
           updateRoomVideoState({ 
             isPlaying: false,
@@ -326,7 +305,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
           });
         }
         
-        // Clear sync interval when paused
         if (syncIntervalRef.current) {
           window.clearInterval(syncIntervalRef.current);
           syncIntervalRef.current = null;
@@ -345,7 +323,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
           syncIntervalRef.current = null;
         }
         
-        // Play next video if available
         playNextVideo();
         break;
         
@@ -378,7 +355,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
 
   const playNextVideo = () => {
     if (playlist.length === 0 || currentVideoPosition === null) {
-      // If it's the last video in playlist, start from the beginning
       if (playlist.length > 0) {
         playVideoFromPlaylist(playlist[0].video_id);
         toast({
@@ -402,7 +378,6 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   };
 
   const playVideoFromPlaylist = (videoId: string) => {
-    // Verify the video is in the playlist
     const isInPlaylist = playlist.some(item => item.video_id === videoId);
     
     if (!isInPlaylist && playlist.length > 0) {
@@ -422,6 +397,55 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
     });
   };
 
+  const toggleFullscreen = () => {
+    if (!playerRef.current) return;
+    
+    const iframe = document.querySelector('iframe');
+    if (!iframe) return;
+    
+    if (!fullscreen) {
+      if (iframe.requestFullscreen) {
+        iframe.requestFullscreen();
+      } else if ((iframe as any).webkitRequestFullscreen) {
+        (iframe as any).webkitRequestFullscreen();
+      } else if ((iframe as any).mozRequestFullScreen) {
+        (iframe as any).mozRequestFullScreen();
+      } else if ((iframe as any).msRequestFullscreen) {
+        (iframe as any).msRequestFullscreen();
+      }
+      setFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen();
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
+      }
+      setFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
   const getVideoOptions = () => {
     const commonOpts = {
       playerVars: {
@@ -429,20 +453,19 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
         controls: 1,
         rel: 0,
         fs: 1,
-        modestbranding: 1
+        modestbranding: 1,
+        playsinline: 1
       }
     };
     
-    // Additional mobile-specific options
     if (isMobile) {
       return {
         ...commonOpts,
         width: '100%',
-        height: '100%'
+        height: '240'
       };
     }
     
-    // Desktop options
     return {
       ...commonOpts,
       width: '100%',
@@ -453,11 +476,11 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
   return (
     <div className="relative">
       {isLoading ? (
-        <div className="w-full h-[300px] md:h-[480px] flex justify-center items-center bg-black/50">
+        <div className="w-full h-[240px] md:h-[480px] flex justify-center items-center bg-black/50">
           <Skeleton className="w-full h-full" />
         </div>
       ) : !videoState?.videoId ? (
-        <div className="w-full h-[300px] md:h-[480px] flex justify-center items-center bg-black/50">
+        <div className="w-full h-[240px] md:h-[480px] flex justify-center items-center bg-black/50">
           <div className="text-center">
             <p className="text-muted-foreground">No video selected</p>
             <p className="text-xs text-muted-foreground mt-2">
@@ -513,12 +536,23 @@ const VideoPlayer = ({ roomId, userId }: VideoPlayerProps) => {
               </CustomButton>
             </div>
             
-            <div className="text-xs text-muted-foreground">
-              {playlist.length > 0 && currentVideoPosition !== null ? (
-                <span>
-                  {currentVideoPosition + 1} of {playlist.length}
-                </span>
-              ) : null}
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-muted-foreground mr-2">
+                {playlist.length > 0 && currentVideoPosition !== null ? (
+                  <span>
+                    {currentVideoPosition + 1} of {playlist.length}
+                  </span>
+                ) : null}
+              </div>
+              
+              <CustomButton
+                size="icon"
+                variant="ghost"
+                onClick={toggleFullscreen}
+                className="text-white"
+              >
+                <Maximize2 size={20} />
+              </CustomButton>
             </div>
           </div>
         </>
