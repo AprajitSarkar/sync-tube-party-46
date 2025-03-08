@@ -2,14 +2,20 @@
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { CustomButton } from '@/components/ui/custom-button';
-import { Plus, Search, ExternalLink } from 'lucide-react';
+import { Plus, Search, ExternalLink, Play, ListPlus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase, DEFAULT_YOUTUBE_API_KEY } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface PlaylistEditorProps {
   playlistId: string;
   onVideoAdded: () => void;
+}
+
+interface SearchResult {
+  id: string;
+  title: string;
 }
 
 const PlaylistEditor = ({ playlistId, onVideoAdded }: PlaylistEditorProps) => {
@@ -17,6 +23,8 @@ const PlaylistEditor = ({ playlistId, onVideoAdded }: PlaylistEditorProps) => {
   const [videoUrl, setVideoUrl] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
   const extractVideoId = (url: string) => {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
@@ -112,7 +120,7 @@ const PlaylistEditor = ({ playlistId, onVideoAdded }: PlaylistEditorProps) => {
     if (!searchQuery.trim()) return;
     
     try {
-      setIsAdding(true);
+      setIsSearching(true);
       
       // Use the stored API key from local storage or fall back to the default key
       const storedKey = user?.id ? localStorage.getItem(`youtube_api_key_${user.id}`) : null;
@@ -139,8 +147,13 @@ const PlaylistEditor = ({ playlistId, onVideoAdded }: PlaylistEditorProps) => {
         return;
       }
 
-      const videoId = data.items[0].id.videoId;
-      await addVideoToPlaylist(videoId);
+      // Extract and prepare search results
+      const results = data.items.map((item: any) => ({
+        id: item.id.videoId,
+        title: item.snippet.title
+      }));
+      
+      setSearchResults(results);
     } catch (error) {
       console.error('Error searching videos:', error);
       toast({
@@ -149,8 +162,12 @@ const PlaylistEditor = ({ playlistId, onVideoAdded }: PlaylistEditorProps) => {
         variant: 'destructive',
       });
     } finally {
-      setIsAdding(false);
+      setIsSearching(false);
     }
+  };
+
+  const playVideo = (videoId: string) => {
+    window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
   };
 
   return (
@@ -183,17 +200,61 @@ const PlaylistEditor = ({ playlistId, onVideoAdded }: PlaylistEditorProps) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-white/5 border-white/20"
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
           <CustomButton
             onClick={handleSearch}
-            disabled={!searchQuery.trim() || isAdding}
+            disabled={!searchQuery.trim() || isSearching}
             className="shrink-0"
           >
-            <Search size={16} />
+            {isSearching ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <Search size={16} />
+            )}
             <span>Search</span>
           </CustomButton>
         </div>
       </div>
+
+      {/* Search Results */}
+      {searchResults.length > 0 && (
+        <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+          <h3 className="text-sm font-medium">Search Results</h3>
+          {searchResults.map((result) => (
+            <div key={result.id} className="bg-black/20 backdrop-blur-sm rounded-md p-2 flex items-center gap-2">
+              <img src={`https://i.ytimg.com/vi/${result.id}/default.jpg`} alt={result.title} className="w-16 h-12 object-cover rounded" />
+              <div className="flex-1 truncate">
+                <p className="text-sm font-medium truncate text-white">{result.title}</p>
+              </div>
+              <div className="flex gap-1">
+                <CustomButton
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-white hover:bg-white/10"
+                  onClick={() => playVideo(result.id)}
+                  title="Play Now"
+                >
+                  <Play size={16} />
+                </CustomButton>
+                <CustomButton
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-white hover:bg-white/10"
+                  onClick={() => {
+                    setIsAdding(true);
+                    addVideoToPlaylist(result.id);
+                  }}
+                  title="Add to Playlist"
+                  disabled={isAdding}
+                >
+                  <ListPlus size={16} />
+                </CustomButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
