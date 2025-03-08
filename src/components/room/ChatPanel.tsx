@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import ChatMessage from './ChatMessage';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import LogToast from '@/components/common/LogToast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChatPanelProps {
   roomId: string;
@@ -33,6 +35,7 @@ const ChatPanel = ({ roomId }: ChatPanelProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [logMessage, setLogMessage] = useState('');
   const [logVisible, setLogVisible] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchMessages();
@@ -249,33 +252,35 @@ const ChatPanel = ({ roomId }: ChatPanelProps) => {
           <h3 className="font-medium">Chat</h3>
         </div>
         
-        <ScrollArea className="flex-1 p-4">
-          {messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              <p>No messages yet. Say hello!</p>
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {messages.map((message) => (
-                message.type === 'activity' ? (
-                  <div 
-                    key={message.id}
-                    className="text-xs text-muted-foreground text-center my-2 italic"
-                  >
-                    {message.content}
-                  </div>
-                ) : (
-                  <ChatMessage 
-                    key={message.id} 
-                    message={message} 
-                    currentUser={user}
-                  />
-                )
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </ScrollArea>
+        <div className={`flex-1 ${isMobile ? 'overflow-y-auto max-h-[calc(100vh-250px)]' : ''}`}>
+          <ScrollArea className="h-full p-4">
+            {messages.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-muted-foreground">
+                <p>No messages yet. Say hello!</p>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {messages.map((message) => (
+                  message.type === 'activity' ? (
+                    <div 
+                      key={message.id}
+                      className="text-xs text-muted-foreground text-center my-2 italic"
+                    >
+                      {message.content}
+                    </div>
+                  ) : (
+                    <ChatMessage 
+                      key={message.id} 
+                      message={message} 
+                      currentUser={user}
+                    />
+                  )
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
+        </div>
         
         <div className="p-3 border-t border-white/10">
           <div className="flex gap-2">
