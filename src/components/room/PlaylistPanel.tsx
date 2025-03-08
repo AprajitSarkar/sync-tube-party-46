@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard } from '@/components/ui/glass-card';
 import { CustomButton } from '@/components/ui/custom-button';
-import { Save, Trash2, ListPlus, MoveUp, MoveDown, Search, X } from 'lucide-react';
+import { Save, Trash2, ListPlus, MoveUp, MoveDown, Search, X, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PlaylistItem, { PlaylistItemType } from './PlaylistItem';
 import SaveToPlaylistModal from './SaveToPlaylistModal';
