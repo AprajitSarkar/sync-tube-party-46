@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import VideoPlayer from '@/components/room/VideoPlayer';
 import ChatPanel from '@/components/room/ChatPanel';
 import RoomParticipants from '@/components/room/RoomParticipants';
@@ -35,6 +35,14 @@ interface SearchResult {
   title: string;
 }
 
+interface PlaylistItem {
+  id: string;
+  video_id: string;
+  title: string;
+  position: number;
+  added_by: string;
+}
+
 const Room = () => {
   const {
     roomId
@@ -56,6 +64,7 @@ const Room = () => {
   const [logMessage, setLogMessage] = useState('');
   const [logVisible, setLogVisible] = useState(false);
   const [showMyPlaylists, setShowMyPlaylists] = useState(false);
+  const [roomPlaylistItems, setRoomPlaylistItems] = useState<PlaylistItem[]>([]);
 
   useEffect(() => {
     if (!user || !roomId) {
@@ -64,6 +73,7 @@ const Room = () => {
     }
     
     fetchRoomDetails();
+    fetchRoomPlaylist();
 
     // Presence update - record that user is in this room
     updatePresence();
@@ -84,10 +94,23 @@ const Room = () => {
         }
       })
       .subscribe();
+      
+    // Subscribe to playlist updates
+    const playlistSubscription = supabase.channel(`room_playlist:${roomId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'playlist_items',
+        filter: `room_id=eq.${roomId}`
+      }, () => {
+        fetchRoomPlaylist();
+      })
+      .subscribe();
 
     return () => {
       clearInterval(presenceInterval);
       roomSubscription.unsubscribe();
+      playlistSubscription.unsubscribe();
       
       // When user leaves, only update presence, don't cleanup completely
       leaveRoom();
@@ -147,6 +170,23 @@ const Room = () => {
       navigate('/home');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchRoomPlaylist = async () => {
+    if (!roomId) return;
+    try {
+      const { data, error } = await supabase
+        .from('playlist_items')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('position', { ascending: true });
+        
+      if (error) throw error;
+      
+      setRoomPlaylistItems(data || []);
+    } catch (error) {
+      console.error('Error fetching room playlist:', error);
     }
   };
 
@@ -450,7 +490,11 @@ const Room = () => {
           height: 0
         }} className="w-full overflow-hidden">
               <div className="bg-[#1E0F38] p-4 border-b border-white/10">
-                <UserPlaylists onPlayVideo={handlePlayVideo} onAddToRoomPlaylist={addToRoomPlaylist} />
+                <UserPlaylists 
+                  onPlayVideo={handlePlayVideo} 
+                  onAddToRoomPlaylist={addToRoomPlaylist} 
+                  roomPlaylistItems={roomPlaylistItems}
+                />
               </div>
             </motion.div>}
         </AnimatePresence>
