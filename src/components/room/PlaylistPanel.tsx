@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,17 +5,9 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { CustomButton } from '@/components/ui/custom-button';
 import { Save, Trash2, ListPlus, MoveUp, MoveDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import PlaylistItem from './PlaylistItem';
+import PlaylistItem, { PlaylistItemType } from './PlaylistItem';
 import SaveToPlaylistModal from './SaveToPlaylistModal';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-
-interface PlaylistItemType {
-  id: string;
-  video_id: string;
-  title: string;
-  position: number;
-  added_by: string;
-}
 
 interface PlaylistPanelProps {
   roomId: string;
@@ -221,15 +212,15 @@ const PlaylistPanel = ({ roomId, currentVideoId, onPlayVideo }: PlaylistPanelPro
           </div>
         ) : (
           <div className="space-y-2">
-            {playlistItems.map((item, index) => (
+            {playlistItems.map((item) => (
               <PlaylistItem 
                 key={item.id}
                 item={item}
                 isPlaying={item.video_id === currentVideoId}
                 onPlay={() => onPlayVideo(item.video_id)}
                 onRemove={() => removeItem(item.id)}
-                onMoveUp={index > 0 ? () => moveItem(item.id, 'up') : undefined}
-                onMoveDown={index < playlistItems.length - 1 ? () => moveItem(item.id, 'down') : undefined}
+                onMoveUp={() => moveItem(item.id, 'up')}
+                onMoveDown={() => moveItem(item.id, 'down')}
               />
             ))}
           </div>
